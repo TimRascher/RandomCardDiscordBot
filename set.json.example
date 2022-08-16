@@ -1,0 +1,6 @@
+{
+    "setName": "Random Aid Cards",
+    "id": "rac"
+}
+
+Note: The above JSON needs to go into the root of the project ./data/cards/{name of set}/set.json
