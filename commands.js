@@ -15,6 +15,7 @@ const ValidCommands = {
     MENU: "menu",
     INVALID: "invalid",
     SET: "set",
+    CARD: "card",
     HELP: "help"
 }
 /**
@@ -46,7 +47,7 @@ const CommandHandlers = {
         const channel = mes.channel
         let menuText = "Sets:\n"
         sets.sets.forEach((set) => {
-            menuText += `${set.id}: ${set.setName}\n`
+            menuText += `${set.id}: ${set.setName} (1-${set.cards.length})\n`
         })
         menuText += "C! help - Get More Commands."
         await channel.send(menuText)
@@ -58,10 +59,10 @@ const CommandHandlers = {
      **/
     randomCard: async (mes, sets, setId) => {
         let set = sets.set(setId)
-        if (!set) { CommandHandlers.menu(mes, sets); return }
+        if (!set) { await CommandHandlers.menu(mes, sets); return }
         const channel = mes.channel
-        const card = set.randomCard()
-        await channel.send({ files: [ await card.load() ], content: `${set.setName}` })
+        const card = await set.randomCard()
+        await channel.send({ files: [ await card.load() ], content: `${set.setName} - ${card.id}` })
     },
     /** 
      * @param { Message } mes
@@ -76,10 +77,26 @@ const CommandHandlers = {
                 { name: 'Commands', value: `
                 - \`C!\`: Menu command, show you current card sets.
                 - \`C! {set id}\`: Add the set id to the menu command to get a random card.
+                - \`C! card {set id}-{card number}\`: Add the set id to the menu command to get a random card. (ex \`C! card rac-1\`)
                 - \`C! help\`: Sends you this helpful help sheet full of help.
                 ` }
             )
         await mes.author.send({ embeds: [helpEmbed] })
+    },
+    /** 
+     * @param { Message } mes
+     * @param { Sets } sets
+     * @param { String } modifier
+     **/
+    card: async (mes, sets, modifier) => {
+        const menu = async () => { await CommandHandlers.menu(mes, sets) }
+        const splitMod = modifier.split("-")
+        if (splitMod.length != 2) { await menu(); return }
+        const set = sets.set(splitMod[0])
+        if (!set) { await menu(); return }
+        const card = await set.cardForId(splitMod[1])
+        if (!card) { await menu(); return }
+        await mes.channel.send({ files: [ await card.load() ], content: `${set.setName} - ${card.id}` })
     }
 }
 
@@ -95,6 +112,7 @@ export default async (message, sets) => {
     switch (command.command) {
         case ValidCommands.MENU: await CommandHandlers.menu(message, sets); break
         case ValidCommands.SET: await CommandHandlers.randomCard(message, sets, command.modifier); break
+        case ValidCommands.CARD: await CommandHandlers.card(message, sets, command.modifier); break
         case ValidCommands.HELP: await CommandHandlers.help(message, sets); break
         default: await CommandHandlers.menu(message, sets)
     }

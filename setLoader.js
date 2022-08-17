@@ -4,10 +4,16 @@ import chokidar from "chokidar"
 const fs = fso.promises
 
 /**
+ * @typedef { Object } CardInfo
+ * @property { String } filename
+ * @property { Number } id
+ */
+
+/**
  * @typedef { Object } SetData
  * @property { String } setName
  * @property { String } id
- * @property { [String] } cards
+ * @property { [CardInfo] } cards
  * @property { String } dir
  */
 
@@ -21,11 +27,20 @@ const fs = fso.promises
  * @property { String } name
  * @property { String } path
  * @property { FileLoad } load
+ * @property { Number } id
  */
 
 const baseDir = "./data/cards"
 /** @type { [Set] } */
 let sets = []
+
+/**
+ * @param { String } name
+ * @return { Number }
+ **/
+const GetId = (name) => {
+    return Number(name.split(".")[0])
+}
 
 const RefreshData = async () => {
     const dirInfo = (await fs.readdir(baseDir)).filter(i => !i.startsWith("."))
@@ -45,7 +60,7 @@ const LoadSetJSON = async (directory) => {
         const fileRaw = await fs.readFile(filepath)
         let file = JSON.parse(fileRaw)
         const files = (await fs.readdir(dir)).filter(i => !i.startsWith(".") && i != filename)
-        file.cards = files
+        file.cards = files.map((file) => { return { filename: file, id: GetId(file) }})
         file.dir = dir
         return file
     } catch (error) {
@@ -61,7 +76,7 @@ class Set {
     setName
     /** @type { String } */
     dir
-    /** @type { [String] } */
+    /** @type { [CardInfo] } */
     cards
     /** @param { SetData } set */
     constructor(set) {
@@ -74,21 +89,31 @@ class Set {
      * @param { String } name
      * @return { FileInfo }
      */
-    card(name) {
+    async card(name) {
         return {
             name: name,
             path: `${this.dir}/${name}`,
             load: async () => {
                 let file = await fs.readFile(`${this.dir}/${name}`)
                 return new AttachmentBuilder(file).attachment
-            }
+            },
+            id: GetId(name)
         }
     }
+    /** 
+     * @param { String } name
+     * @return { FileInfo }
+     */
+     async cardForId(id) {
+        const cardInfo = this.cards.filter(card => card.id == id)[0]
+        if (!cardInfo) { return null }
+        return await this.card(cardInfo.filename)
+    }
     /** @return { FileInfo } */
-    randomCard() {
+    async randomCard() {
         const randomIndex = Math.floor(Math.random() * this.cards.length)
-        const name = this.cards[randomIndex]
-        return this.card(name)
+        const name = this.cards[randomIndex].filename
+        return await this.card(name)
     }
 }
 
