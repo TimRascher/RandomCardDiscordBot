@@ -1,5 +1,6 @@
 import fso from "fs"
 import { AttachmentBuilder, Attachment } from "discord.js"
+import chokidar from "chokidar"
 const fs = fso.promises
 
 /**
@@ -23,7 +24,15 @@ const fs = fso.promises
  */
 
 const baseDir = "./data/cards"
+/** @type { [Set] } */
+let sets = []
 
+const RefreshData = async () => {
+    const dirInfo = (await fs.readdir(baseDir)).filter(i => !i.startsWith("."))
+    sets = (await Promise.all(dirInfo.map(async (dir) => {
+        return await LoadSetJSON(dir)
+    }))).filter(i => i != null).map(i => new Set(i)).sort((a, b) => { return a.setName - b.setName })
+}
 /**
  * @param { String } directory 
  * @returns { SetData }
@@ -39,7 +48,7 @@ const LoadSetJSON = async (directory) => {
         file.cards = files
         file.dir = dir
         return file
-    } catch(error) {
+    } catch (error) {
         console.log(error)
         return null
     }
@@ -66,7 +75,7 @@ class Set {
      * @return { FileInfo }
      */
     card(name) {
-        return { 
+        return {
             name: name,
             path: `${this.dir}/${name}`,
             load: async () => {
@@ -84,16 +93,9 @@ class Set {
 }
 
 class Sets {
+    constructor() { }
     /** @type { [Set] } */
-    sets
-    constructor() {}
-    async update() {
-        let dirInfo = (await fs.readdir(baseDir)).filter(i => !i.startsWith("."))
-        this.sets = (await Promise.all(dirInfo.map(async (dir) => {
-            return await LoadSetJSON(dir)
-        }))).filter(i => i != null).map(i => new Set(i)).sort((a, b) => { return a.setName - b.setName })
-        return this
-    }
+    get sets() { return sets }
     /**
      * @param { String } id 
      * @return { Set }
@@ -103,3 +105,9 @@ class Sets {
 }
 
 export { Sets }
+
+(async () => {
+    chokidar.watch('./data/cards').on('all', async (event, path) => {
+        if (path.endsWith("set.json")) { await RefreshData() }
+    })
+})()

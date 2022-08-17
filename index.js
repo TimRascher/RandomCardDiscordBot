@@ -17,11 +17,11 @@ const menu = (mes, sets) => {
 }
 
 (async () => {
-    const sets = await Sets.create().update()
+    const sets = await Sets.create()
     const client = ClientSetup()
     client.on("messageCreate", async (message) => {
         let content = message.content
-        if (!content.startsWith("C!")) { return }
+        if (!content.toUpperCase().startsWith("C!")) { return }
         const parts = content.split(" ")
         if (parts.length == 1) { menu(message, sets); return }
         let set = sets.set(parts[1])
