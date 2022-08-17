@@ -1,5 +1,5 @@
 import { Sets } from "./setLoader.js"
-import { Message } from "discord.js"
+import { Message, EmbedBuilder } from "discord.js"
 
 /**
  * @typedef { Object } Command
@@ -42,17 +42,19 @@ const CommandHandlers = {
      * @param { Message } mes
      * @param { Sets } sets
      **/
-    menu: (mes, sets) => {
+    menu: async (mes, sets) => {
         const channel = mes.channel
         let menuText = "Sets:\n"
         sets.sets.forEach((set) => {
             menuText += `${set.id}: ${set.setName}\n`
         })
-        channel.send(menuText)
+        menuText += "C! help - Get More Commands."
+        await channel.send(menuText)
     },
     /** 
      * @param { Message } mes
      * @param { Sets } sets
+     * @param { String } setId
      **/
     randomCard: async (mes, sets, setId) => {
         let set = sets.set(setId)
@@ -60,6 +62,24 @@ const CommandHandlers = {
         const channel = mes.channel
         const card = set.randomCard()
         await channel.send({ files: [ await card.load() ], content: `${set.setName}` })
+    },
+    /** 
+     * @param { Message } mes
+     * @param { Sets } sets
+     **/
+    help: async (mes, sets) => {
+        const helpEmbed = new EmbedBuilder()
+            .setColor(0x0099FF)
+            .setTitle('Help Cheat Sheet')
+            .setURL('https://github.com/TimRascher/RandomCardDiscordBot')
+            .addFields(
+                { name: 'Commands', value: `
+                - \`C!\`: Menu command, show you current card sets.
+                - \`C! {set id}\`: Add the set id to the menu command to get a random card.
+                - \`C! help\`: Sends you this helpful help sheet full of help.
+                ` }
+            )
+        await mes.author.send({ embeds: [helpEmbed] })
     }
 }
 
@@ -73,8 +93,9 @@ export default async (message, sets) => {
     if (!content.toUpperCase().startsWith("C!")) { return }
     const command = getCommand(content, sets)
     switch (command.command) {
-        case ValidCommands.MENU: CommandHandlers.menu(message, sets); break
-        case ValidCommands.SET: CommandHandlers.randomCard(message, sets, command.modifier); break
-        default: CommandHandlers.menu(message, sets)
+        case ValidCommands.MENU: await CommandHandlers.menu(message, sets); break
+        case ValidCommands.SET: await CommandHandlers.randomCard(message, sets, command.modifier); break
+        case ValidCommands.HELP: await CommandHandlers.help(message, sets); break
+        default: await CommandHandlers.menu(message, sets)
     }
 }
