@@ -1,23 +1,22 @@
 import "dotenv/config"
 import { Sets } from "./setLoader.js"
-import { Message } from "discord.js"
 import ClientSetup from "./setupDiscord.js"
-import CommandHandler from "./commands.js"
+import DynamicCommandSetup from "./dynamicCommandSetup.js"
 
 (async () => {
     const sets = await Sets.create()
     const client = ClientSetup()
-    client.on("messageCreate", async (message) => {
-        await CommandHandler(message, sets)
-        // let content = message.content
-        // if (!content.toUpperCase().startsWith("C!")) { return }
-        // const parts = content.split(" ")
-        // if (parts.length == 1) { menu(message, sets); return }
-        // let set = sets.set(parts[1])
-        // if (!set) { menu(message, sets); return }
-        // const channel = message.channel
-        // const card = set.randomCard()
-        // let m = await channel.send({ files: [ await card.load() ], content: `${set.setName}` })
+    client.commands = await DynamicCommandSetup(sets)
+    client.on("interactionCreate", async (interaction) => {
+        if (!interaction.isChatInputCommand()) { return }
+        const command = interaction.client.commands.get(interaction.commandName)
+        if (!command) { return }
+        try {
+            await command.execute(interaction)
+        } catch (error) {
+            console.error(error)
+            await interaction.reply({ content: "There was an error.", ephemeral: true })
+        }
     })
     client.login(process.env.TOKEN)
 })()
