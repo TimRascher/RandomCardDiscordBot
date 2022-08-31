@@ -11,6 +11,7 @@
   "type": "module",
   "dependencies": {
     "@discordjs/rest": "^1.1.0",
+    "@jssidekick/discordcommon": "github:TimRascher/JSSidekick-DiscordCommon",
     "chokidar": "^3.5.3",
     "discord.js": "^14.2.0",
     "dotenv": "^16.0.1"
